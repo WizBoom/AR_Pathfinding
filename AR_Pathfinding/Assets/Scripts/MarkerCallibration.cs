@@ -23,7 +23,8 @@ public class MarkerCallibration : MonoBehaviour, ITangoVideoOverlay
     public Pathfinding m_Pathfinder;
     [Range(-360f, 360f)]
     public float m_AdditionalAngle = 90f;
-    public Text m_UIText;
+    //public Text m_UIText;
+    public GameObject m_UICanvas;
     public Button m_UIButton;
     public Dropdown m_UIDestinationDropdown;
     public List<Marker> m_Markers;
@@ -34,6 +35,7 @@ public class MarkerCallibration : MonoBehaviour, ITangoVideoOverlay
     private Dictionary<String, GameObject> _MarkerObjects;
     private int _CurrentMarker = -1;
     private Vector3 _TranslationCurrentMarker = Vector3.zero;
+    private Quaternion _RotationCurrentMarker = Quaternion.identity;
     private List<TangoSupport.Marker> _MarkerList;
     private TangoApplication m_TangoApplication;
 
@@ -74,7 +76,7 @@ public class MarkerCallibration : MonoBehaviour, ITangoVideoOverlay
             //Set text to scanning
             if (_MarkerList.Count <= 0)
             {
-                m_UIText.text = "Scanning";
+                m_UICanvas.SetActive(true);
                 m_UIButton.enabled = false;
                 m_UIButton.gameObject.SetActive(false);
                 _CurrentMarker = -1;
@@ -116,9 +118,15 @@ public class MarkerCallibration : MonoBehaviour, ITangoVideoOverlay
                 int currentMarkerInt = 0;
                 bool success = int.TryParse(marker.m_content, out currentMarkerInt);
                 if (success)
+                {
+                    if (_CurrentMarker != currentMarkerInt)
+                        AndroidHelper.ShowAndroidToastMessage(string.Format("Found marker {0}", currentMarkerInt),
+                            AndroidHelper.ToastLength.SHORT);
                     _CurrentMarker = currentMarkerInt;
+                }
                 _TranslationCurrentMarker = marker.m_translation;
-                m_UIText.text = string.Format("Found marker {0}", _CurrentMarker);
+                _RotationCurrentMarker = marker.m_orientation;
+                m_UICanvas.SetActive(false);
             }
         }
         else
@@ -143,32 +151,30 @@ public class MarkerCallibration : MonoBehaviour, ITangoVideoOverlay
                 {
                     //Update position by moving the level
                     m_Level.transform.rotation = Quaternion.Euler(m_Level.transform.rotation.eulerAngles.x,
-                        -marker.markerTransform.rotation.eulerAngles.y + m_AdditionalAngle, m_Level.transform.rotation.eulerAngles.z);
+                        -marker.markerTransform.rotation.eulerAngles.y + m_AdditionalAngle + _RotationCurrentMarker.eulerAngles.y, 
+                        m_Level.transform.rotation.eulerAngles.z);
                     m_Level.transform.position -= marker.markerTransform.position;
                     m_Level.transform.position += _TranslationCurrentMarker;
 
                     //Update UI
                     m_Anchored = true;
 
-                    //m_UIDestinationDropdown.gameObject.SetActive(true);
-                    m_UIText.text = string.Format("Anchored (Marker {0})", _CurrentMarker);
+                    AndroidHelper.ShowAndroidToastMessage(string.Format("Anchored on Marker {0}", _CurrentMarker));
+                    m_UICanvas.SetActive(false);
                     m_UIButton.gameObject.SetActive(false);
                     m_UIButton.enabled = true;
                     return;
                 }
             }
-
-            //Marker isn't valid
-            //TODO: Debug
-
+            AndroidHelper.ShowAndroidToastMessage(string.Format("Marker {0} isn't valid!", _CurrentMarker));
         }
     }
 
     private void OnGUI()
     {
 
-        if (GUI.Button(new Rect(0,
-                                110,
+        if (GUI.Button(new Rect(10,
+                                120,
                                 200,
                                 100), "<size=20>Anchor Reset</size>"))
         {
@@ -180,7 +186,7 @@ public class MarkerCallibration : MonoBehaviour, ITangoVideoOverlay
     {
         int index = m_UIDestinationDropdown.value - 1;
         if (index >= 0)
-            m_Pathfinder.SetDestination(m_Markers[index].markerTransform.position);
+            m_Pathfinder.SetDestination(m_Destinations[index].location.position);
         else
             m_Pathfinder.ResetDestination();
     }

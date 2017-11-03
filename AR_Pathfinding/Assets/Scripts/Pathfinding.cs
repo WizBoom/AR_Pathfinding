@@ -19,6 +19,7 @@ public class Pathfinding : MonoBehaviour
     public Color m_LineColor = Color.blue;
     public float m_LineWidth = 1f;
     public Dropdown m_UIDestinationDropdown;
+    public Text m_UIDistanceText;
     public GameObject m_LineRendererObject;
     public GameObject m_Level;
     public GameObject m_User;
@@ -44,8 +45,8 @@ public class Pathfinding : MonoBehaviour
     {
         this.transform.position = m_User.transform.position;
 
-        var nav = GetComponent<NavMeshAgent>();
-        if (nav == null || nav.path == null)
+        //var nav = GetComponent<NavMeshAgent>();
+        if (_NavmeshAgent == null || _NavmeshAgent.path == null)
             return;
 
         //Set line properties
@@ -61,8 +62,24 @@ public class Pathfinding : MonoBehaviour
         line.startColor = m_LineColor;
         line.endColor = m_LineColor;
 
-        var path = nav.path;
+        var path = _NavmeshAgent.path;
         line.positionCount = path.corners.Length;
+
+        //Distance
+        if (path.corners.Length > 1)
+        {
+            m_UIDistanceText.gameObject.SetActive(true);
+            //Get Distance
+            float distance = _NavmeshAgent.remainingDistance;
+            if (float.IsInfinity(distance))
+                distance = CalculatePathDistance(path);
+
+            m_UIDistanceText.text = String.Format("{0}m", distance.ToString("0.00"));
+        }
+        else
+        {
+            m_UIDistanceText.gameObject.SetActive(false);
+        }
 
         for (int i = 0; i < path.corners.Length; i++)
         {
@@ -104,7 +121,10 @@ public class Pathfinding : MonoBehaviour
 
         if (!_FindingFloor && m_MarkerCallibration.m_Anchored)
         {
-            if (GUI.Button(new Rect(Screen.width - 220, Screen.height - 220, 200, 80), "<size=30>Find Floor</size>"))
+            if (GUI.Button(new Rect(10,
+                                    230, 
+                                    200, 
+                                    100), "<size=20>Find Floor</size>"))
             {
                 if (_PointCloud == null)
                 {
@@ -134,5 +154,15 @@ public class Pathfinding : MonoBehaviour
     {
         _NavmeshAgent.SetDestination(position);
         _NavmeshAgent.isStopped = true;
+    }
+
+    private float CalculatePathDistance(NavMeshPath path)
+    {
+        float distance = .0f;
+        for (var i = 0; i < path.corners.Length - 1; i++)
+        {
+            distance += Vector3.Distance(path.corners[i], path.corners[i + 1]);
+        }
+        return distance;
     }
 }

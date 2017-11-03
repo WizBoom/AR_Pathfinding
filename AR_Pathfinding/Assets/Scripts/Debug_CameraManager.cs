@@ -62,8 +62,8 @@ public class Debug_CameraManager : MonoBehaviour {
     private void OnGUI()
     {
         //Button to go into debug mode
-        if (GUI.Button(new Rect(0,
-                                0,
+        if (GUI.Button(new Rect(10,
+                                10,
                                 200,
                                 100), "<size=20>Debug</size>"))
         {
